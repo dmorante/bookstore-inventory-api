@@ -40,7 +40,7 @@ async def search_books(
     category: Annotated[str, Query(min_length=1, description="Categoría exacta a buscar.", examples=["Literatura Clásica"])],
     service: Annotated[BookService, Depends(get_book_service)],
 ) -> list[BookRead]:
-    items, _ = await service.list(skip=0, limit=1000, category=category)
+    items, _ = await service.list_all(skip=0, limit=1000, category=category)
     return [BookRead.model_validate(b) for b in items]
 
 
@@ -99,7 +99,7 @@ async def list_books(
     skip: Annotated[int, Query(ge=0, description="Registros a omitir (offset).")] = 0,
     limit: Annotated[int, Query(ge=1, le=100, description="Tamaño de página (1-100).")] = 20,
 ) -> PaginatedBooks:
-    items, total = await service.list(skip=skip, limit=limit)
+    items, total = await service.list_all(skip=skip, limit=limit)
     return PaginatedBooks(
         items=[BookRead.model_validate(b) for b in items],
         total=total,

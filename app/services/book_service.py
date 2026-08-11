@@ -62,7 +62,7 @@ class BookService:
         await self._db.refresh(book)
         return book
 
-    async def list(
+    async def list_all(
         self,
         skip: int = 0,
         limit: int = 20,
