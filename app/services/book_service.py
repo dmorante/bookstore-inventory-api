@@ -12,7 +12,7 @@ Usamos la `AsyncSession` de SQLModel, que expone `.exec()` en lugar de
 (en vez de tuplas Row), lo que hace el código más legible.
 """
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -167,6 +167,6 @@ class BookService:
             margin_percentage=margin,
             selling_price_local=selling_price_local,
             currency=currency,
-            calculation_timestamp=datetime.now(UTC),
+            calculation_timestamp=datetime.now(timezone.utc),
             used_fallback_rate=used_fallback,
         )
