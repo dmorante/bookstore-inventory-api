@@ -1,0 +1,96 @@
+{
+  "info": {
+    "_postman_id": "b0bc0f0e-0001-4a0b-9c00-000000000001",
+    "name": "Bookstore Inventory API",
+    "description": "Colección para probar la API de inventario de librerías. Usa la variable de entorno `baseUrl` para cambiar entre local y producción.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000", "type": "string" },
+    { "key": "bookId", "value": "1", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": { "method": "GET", "url": "{{baseUrl}}/health" }
+    },
+    {
+      "name": "Books - Create",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"El Quijote\",\n  \"author\": \"Miguel de Cervantes\",\n  \"isbn\": \"978-84-376-0494-7\",\n  \"cost_usd\": 15.99,\n  \"stock_quantity\": 25,\n  \"category\": \"Literatura Clásica\",\n  \"supplier_country\": \"ES\"\n}"
+        },
+        "url": "{{baseUrl}}/books"
+      }
+    },
+    {
+      "name": "Books - List (paginado)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/books?skip=0&limit=20",
+          "host": ["{{baseUrl}}"],
+          "path": ["books"],
+          "query": [
+            { "key": "skip", "value": "0" },
+            { "key": "limit", "value": "20" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Books - Get by ID",
+      "request": { "method": "GET", "url": "{{baseUrl}}/books/{{bookId}}" }
+    },
+    {
+      "name": "Books - Update",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"stock_quantity\": 30,\n  \"cost_usd\": 16.50\n}"
+        },
+        "url": "{{baseUrl}}/books/{{bookId}}"
+      }
+    },
+    {
+      "name": "Books - Delete",
+      "request": { "method": "DELETE", "url": "{{baseUrl}}/books/{{bookId}}" }
+    },
+    {
+      "name": "Books - Search by category",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/books/search?category=Literatura Clásica",
+          "host": ["{{baseUrl}}"],
+          "path": ["books", "search"],
+          "query": [{ "key": "category", "value": "Literatura Clásica" }]
+        }
+      }
+    },
+    {
+      "name": "Books - Low stock",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/books/low-stock?threshold=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["books", "low-stock"],
+          "query": [{ "key": "threshold", "value": "10" }]
+        }
+      }
+    },
+    {
+      "name": "Books - Calculate price",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/books/{{bookId}}/calculate-price"
+      }
+    }
+  ]
+}

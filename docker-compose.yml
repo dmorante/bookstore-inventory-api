@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: bookstore_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: bookstore
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bookstore"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: bookstore_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/bookstore
+      EXCHANGE_API_URL: https://api.exchangerate-api.com/v4/latest/USD
+      EXCHANGE_API_TIMEOUT: "5"
+      DEFAULT_MARGIN_PERCENTAGE: "40"
+      DEFAULT_FALLBACK_RATE: "0.92"
+      DEFAULT_FALLBACK_CURRENCY: EUR
+      DEBUG: "true"
+    ports:
+      - "8000:8000"
+
+volumes:
+  postgres_data:
