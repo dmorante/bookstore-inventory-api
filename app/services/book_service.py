@@ -6,13 +6,18 @@ viven aquí. Los endpoints solo se encargan de:
 - Recibir el request.
 - Delegar en este servicio.
 - Serializar la respuesta.
+
+Usamos la `AsyncSession` de SQLModel, que expone `.exec()` en lugar de
+`.execute()`. `exec()` devuelve directamente instancias del modelo
+(en vez de tuplas Row), lo que hace el código más legible.
 """
 
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import Settings
 from app.core.country_currency import currency_for_country
@@ -45,7 +50,7 @@ class BookService:
 
     async def create(self, data: BookCreate) -> Book:
         """Crea un nuevo libro. Falla con 400 si el ISBN ya existe."""
-        book = Book(**data.model_dump())
+        book = Book.model_validate(data)
         self._db.add(book)
         try:
             await self._db.commit()
@@ -65,16 +70,18 @@ class BookService:
     ) -> tuple[list[Book], int]:
         """Lista libros con paginación y filtro opcional por categoría."""
         base_query = select(Book)
-        count_query = select(func.count(Book.id))
+        count_query = select(func.count()).select_from(Book)
         if category:
             base_query = base_query.where(Book.category == category)
             count_query = count_query.where(Book.category == category)
 
-        total = (await self._db.execute(count_query)).scalar_one()
-        result = await self._db.execute(
+        total_result = await self._db.exec(count_query)
+        total = total_result.one()
+
+        items_result = await self._db.exec(
             base_query.order_by(Book.id).offset(skip).limit(limit)
         )
-        return list(result.scalars().all()), total
+        return list(items_result.all()), int(total)
 
     async def get(self, book_id: int) -> Book:
         """Devuelve un libro por su ID o levanta `BookNotFoundError`."""
@@ -89,6 +96,7 @@ class BookService:
         changes = data.model_dump(exclude_unset=True)
         for key, value in changes.items():
             setattr(book, key, value)
+        self._db.add(book)
         try:
             await self._db.commit()
         except IntegrityError as exc:
@@ -107,10 +115,12 @@ class BookService:
 
     async def low_stock(self, threshold: int) -> list[Book]:
         """Devuelve libros con stock por debajo (o igual) del umbral."""
-        result = await self._db.execute(
-            select(Book).where(Book.stock_quantity <= threshold).order_by(Book.stock_quantity)
+        result = await self._db.exec(
+            select(Book)
+            .where(Book.stock_quantity <= threshold)
+            .order_by(Book.stock_quantity)
         )
-        return list(result.scalars().all())
+        return list(result.all())
 
     # ------------------------------------------------------------------
     # Cálculo de precio
@@ -145,6 +155,7 @@ class BookService:
         selling_price_local = round(cost_local * (1 + margin / 100), 2)
 
         book.selling_price_local = selling_price_local
+        self._db.add(book)
         await self._db.commit()
         await self._db.refresh(book)
 

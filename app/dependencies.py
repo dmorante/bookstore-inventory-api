@@ -8,7 +8,7 @@ trivial sustituirlas en tests con `app.dependency_overrides`.
 from typing import Annotated
 
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import Settings, get_settings
 from app.database import get_db

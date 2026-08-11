@@ -2,7 +2,7 @@
 
 API REST para la gestión del inventario de una cadena de librerías, con validación de precios en tiempo real contra una API de tasas de cambio.
 
-Construida con **FastAPI + SQLAlchemy 2.0 (async) + PostgreSQL**, empaquetada con **Docker** y migraciones con **Alembic**.
+Construida con **FastAPI + SQLModel (async) + PostgreSQL**, empaquetada con **Docker** y migraciones con **Alembic**.
 
 > Nota: la prueba pide preferentemente Django. Se acordó con el equipo evaluador realizarla en FastAPI.
 
@@ -159,13 +159,13 @@ bookstore-inventory-api/
 ├── app/
 │   ├── main.py               # Entry point FastAPI
 │   ├── config.py             # Settings (pydantic-settings)
-│   ├── database.py           # Motor y sesión SQLAlchemy async
+│   ├── database.py           # Motor y sesión SQLModel async
 │   ├── dependencies.py       # Dependencias de FastAPI
 │   ├── core/
 │   │   ├── exceptions.py     # Errores de dominio + handler global
 │   │   └── country_currency.py
-│   ├── models/book.py        # Modelo ORM
-│   ├── schemas/book.py       # Esquemas Pydantic
+│   ├── models/book.py        # Modelo SQLModel (tabla + BookBase compartido)
+│   ├── schemas/book.py       # Esquemas de request/response (SQLModel + Pydantic)
 │   ├── routers/books.py      # Endpoints REST
 │   └── services/
 │       ├── book_service.py   # Lógica de negocio

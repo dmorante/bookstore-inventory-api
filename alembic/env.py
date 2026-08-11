@@ -14,9 +14,10 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
+from sqlmodel import SQLModel
+
 from app.config import get_settings
-from app.database import Base
-# Importar los modelos para que Alembic los detecte via Base.metadata
+# Importar los modelos para que Alembic los detecte via SQLModel.metadata
 from app.models import book as _book  # noqa: F401
 
 config = context.config
@@ -26,7 +27,7 @@ if config.config_file_name is not None:
 # Inyectamos la URL leída desde nuestra config
 config.set_main_option("sqlalchemy.url", get_settings().database_url)
 
-target_metadata = Base.metadata
+target_metadata = SQLModel.metadata
 
 
 def run_migrations_offline() -> None:
