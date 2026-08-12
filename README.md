@@ -23,7 +23,7 @@ docker compose up --build
 
 Esto levanta:
 
-- `db` — PostgreSQL 16 en `localhost:5432`.
+- `db` — PostgreSQL 16, expuesto en `localhost:5434` (se usa 5434 en el host para no chocar con otros Postgres locales; dentro de la red de Docker sigue siendo `db:5432`).
 - `api` — la API en `http://localhost:8000` (aplica migraciones automáticamente al arrancar).
 
 Swagger UI: <http://localhost:8000/docs>
@@ -146,9 +146,27 @@ Se incluye `postman_collection.json` en la raíz. Importa en Postman y ajusta la
 
 ## Despliegue en la nube
 
-- **Base de datos**: crear proyecto en [Supabase](https://supabase.com), copiar la connection string en formato `postgresql://` y convertirla a `postgresql+asyncpg://...`.
-- **API**: se puede desplegar el contenedor en Render, Railway, Fly.io, Cloud Run o similares. Definir la variable `DATABASE_URL` apuntando a Supabase.
-- Después del primer deploy, ejecutar migraciones (el `CMD` del Dockerfile ya corre `alembic upgrade head` en cada arranque).
+El proyecto está desplegado con **Supabase** (base de datos gestionada) y **Render** (API contenedorizada).
+
+### Base de datos — Supabase
+
+1. Crear un proyecto en [Supabase](https://supabase.com).
+2. Copiar la connection string del **Transaction Pooler** (puerto 6543).
+3. Adaptarla: cambiar el esquema `postgresql://` por `postgresql+asyncpg://` y sustituir la contraseña.
+
+### API — Render
+
+1. **New → Web Service**, conectando este repositorio.
+2. **Runtime: Docker** (Render detecta el `Dockerfile` de la raíz).
+3. Definir las variables de entorno de la tabla de arriba, con `DATABASE_URL` apuntando a Supabase.
+
+Las migraciones se aplican solas: el `CMD` del Dockerfile ejecuta `alembic upgrade head` antes de arrancar Uvicorn. El servidor escucha en `$PORT` si el proveedor la define, y en 8000 en local.
+
+### Nota técnica: PgBouncer y prepared statements
+
+El Transaction Pooler de Supabase es PgBouncer en modo *transaction*, que reasigna la conexión física en cada transacción. Eso rompe los *prepared statements*, que son estado por conexión, con el error `DuplicatePreparedStatementError`.
+
+La configuración necesaria está en [`app/database.py`](app/database.py) (`CONNECT_ARGS`) y consiste en tres ajustes complementarios —desactivar el cache de asyncpg, desactivar el del dialecto de SQLAlchemy, y generar nombres únicos por statement— más el uso de `NullPool`, ya que el pooling lo hace PgBouncer. Alembic importa esa misma configuración para conectarse igual que la aplicación.
 
 ---
 

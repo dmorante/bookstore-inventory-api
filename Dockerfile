@@ -20,5 +20,9 @@ COPY alembic.ini .
 
 EXPOSE 8000
 
-# Aplica migraciones y arranca el servidor
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Aplica migraciones y arranca el servidor.
+#
+# El puerto se toma de $PORT si existe (los PaaS como Render, Railway o
+# Cloud Run lo inyectan y esperan que la app escuche ahí) y cae a 8000
+# en local, donde docker-compose no define esa variable.
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

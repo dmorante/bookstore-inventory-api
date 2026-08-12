@@ -1,8 +1,11 @@
 """
 Configuración de Alembic para migraciones asíncronas.
 
-Se lee la URL de la base de datos desde `app.config.get_settings()` para
-mantener una única fuente de verdad y evitar duplicarla en `alembic.ini`.
+Se lee la URL de la base de datos desde `app.config.get_settings()` y los
+argumentos de conexión desde `app.database.CONNECT_ARGS`, de modo que las
+migraciones se conecten exactamente igual que la aplicación (incluida la
+compatibilidad con PgBouncer). Una sola fuente de verdad evita que ambos
+caminos se desincronicen.
 """
 
 import asyncio
@@ -17,6 +20,7 @@ from alembic import context
 from sqlmodel import SQLModel
 
 from app.config import get_settings
+from app.database import CONNECT_ARGS
 # Importar los modelos para que Alembic los detecte via SQLModel.metadata
 from app.models import book as _book  # noqa: F401
 
@@ -53,17 +57,15 @@ def do_run_migrations(connection: Connection) -> None:
 async def run_migrations_online() -> None:
     """Aplica migraciones abriendo una conexión async real.
 
-    `connect_args={"statement_cache_size": 0}` es necesario para
-    funcionar detrás del transaction pooler de Supabase (pgbouncer),
-    que no soporta prepared statements. Sin esto, Alembic falla al
-    introspectar la BD con DuplicatePreparedStatementError.
+    Reutiliza `CONNECT_ARGS` de la aplicación para poder correr contra
+    PgBouncer (Supabase Transaction Pooler). Sin esos ajustes, Alembic
+    falla al introspectar la BD con `DuplicatePreparedStatementError`.
     """
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        connect_args={"statement_cache_size": 0},
-        prepared_statement_cache_size=0,
+        connect_args=CONNECT_ARGS,
     )
 
     async with connectable.connect() as connection:

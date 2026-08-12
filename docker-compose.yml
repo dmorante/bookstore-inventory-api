@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: bookstore
-    # Mapeamos al 5433 en el host para no colisionar con otros Postgres locales.
+    # Mapeamos al 5434 en el host para no colisionar con otros Postgres locales.
     # Dentro de la red de compose el servicio `api` sigue usando db:5432.
     ports:
       - "5434:5432"

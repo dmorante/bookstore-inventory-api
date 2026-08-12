@@ -15,6 +15,7 @@ Expone:
 """
 
 from collections.abc import AsyncGenerator
+from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -24,25 +25,43 @@ from app.config import get_settings
 
 settings = get_settings()
 
-# Nota sobre pgbouncer / Supabase Transaction Pooler:
-# El transaction pooler (puerto 6543) reasigna conexiones a cada
-# transacción, por lo que los prepared statements que asyncpg cachea
-# terminan colisionando entre sesiones ("prepared statement already
-# exists"). Para funcionar detrás de pgbouncer transaction mode:
-#   1. statement_cache_size=0 → asyncpg no cachea prepared statements.
-#   2. NullPool → SQLAlchemy no mantiene conexiones abiertas; pgbouncer
-#      ya se encarga del pooling del lado del servidor.
-# Con conexiones directas (sin pooler) estas opciones tampoco hacen
-# daño, solo eliminan una capa de cache local.
+
+# ---------------------------------------------------------------------------
+# Compatibilidad con PgBouncer (Supabase Transaction Pooler, puerto 6543)
+# ---------------------------------------------------------------------------
+#
+# El transaction pooler reasigna la conexión física a cada transacción, así
+# que dos sesiones distintas pueden acabar compartiendo backend. Eso rompe
+# los prepared statements, que son estado por conexión. Hacen falta tres
+# ajustes complementarios:
+#
+#   1. `statement_cache_size=0` → asyncpg no cachea prepared statements.
+#   2. `prepared_statement_cache_size=0` → el dialecto asyncpg de SQLAlchemy
+#      tiene su propia capa de cache, independiente de la anterior.
+#   3. `prepared_statement_name_func` → aunque no se cacheen, asyncpg sigue
+#      creando statements con nombres correlativos (`__asyncpg_stmt_1__`,
+#      `_2_`, ...) que colisionan entre conexiones multiplexadas. Generamos
+#      un nombre único por statement para evitarlo.
+#
+# Los tres son argumentos DBAPI: van dentro de `connect_args`, no como
+# kwargs de `create_async_engine`.
+#
+# Además usamos `NullPool`: PgBouncer ya hace el pooling del lado servidor,
+# y mantener un segundo pool encima acumula statements inútiles.
+#
+# Contra una conexión directa (sin pooler) estos ajustes son inocuos: solo
+# eliminan una capa de cache local.
+CONNECT_ARGS: dict = {
+    "statement_cache_size": 0,
+    "prepared_statement_cache_size": 0,
+    "prepared_statement_name_func": lambda: f"__asyncpg_{uuid4()}__",
+}
+
 engine = create_async_engine(
     settings.database_url,
     echo=settings.debug,
     poolclass=NullPool,
-    # asyncpg: no cachear prepared statements a nivel de driver.
-    connect_args={"statement_cache_size": 0},
-    # SQLAlchemy dialecto asyncpg: tambien tiene su propia capa de
-    # prepared statements que debe apagarse para pgbouncer.
-    prepared_statement_cache_size=0,
+    connect_args=CONNECT_ARGS,
 )
 
 AsyncSessionLocal = async_sessionmaker(
