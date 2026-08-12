@@ -2,20 +2,47 @@
   "info": {
     "_postman_id": "b0bc0f0e-0001-4a0b-9c00-000000000001",
     "name": "Bookstore Inventory API",
-    "description": "Colección para probar la API de inventario de librerías. Usa la variable de entorno `baseUrl` para cambiar entre local y producción.",
+    "description": "Colección para probar la API de inventario de librerías.\n\nPor defecto apunta a la **API desplegada en Render**, por lo que puede ejecutarse sin necesidad de levantar el proyecto localmente.\n\n**Variables**\n\n- `baseUrl`: URL de la API. Por defecto la pública (`https://bookstore-inventory-api-ldhf.onrender.com`). Para probar en local, cambiarla a `http://localhost:8000`.\n- `bookId`: ID del libro usado en las peticiones por ID. La petición _Books - Create_ lo actualiza automáticamente con el ID del libro que acaba de crear, así que ejecutándola primero el resto de peticiones ya apuntan a un libro válido.\n\n**Nota:** la API está en el plan gratuito de Render, que suspende el servicio tras un rato sin tráfico. La primera petición puede tardar ~30 s en responder mientras el servicio despierta; las siguientes son inmediatas.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:8000", "type": "string" },
+    {
+      "key": "baseUrl",
+      "value": "https://bookstore-inventory-api-ldhf.onrender.com",
+      "type": "string"
+    },
     { "key": "bookId", "value": "1", "type": "string" }
   ],
   "item": [
     {
       "name": "Health",
-      "request": { "method": "GET", "url": "{{baseUrl}}/health" }
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health",
+        "description": "Verifica que el servicio esté operativo."
+      }
     },
     {
       "name": "Books - Create",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Guarda el ID del libro creado para reutilizarlo en las",
+              "// peticiones que operan por ID (get, update, delete, calculate-price).",
+              "if (pm.response.code === 201) {",
+              "    pm.collectionVariables.set('bookId', pm.response.json().id);",
+              "}",
+              "",
+              "pm.test('Status 201 Created', function () {",
+              "    pm.response.to.have.status(201);",
+              "});"
+            ]
+          }
+        }
+      ],
       "request": {
         "method": "POST",
         "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -23,7 +50,8 @@
           "mode": "raw",
           "raw": "{\n  \"title\": \"El Quijote\",\n  \"author\": \"Miguel de Cervantes\",\n  \"isbn\": \"978-84-376-0494-7\",\n  \"cost_usd\": 15.99,\n  \"stock_quantity\": 25,\n  \"category\": \"Literatura Clásica\",\n  \"supplier_country\": \"ES\"\n}"
         },
-        "url": "{{baseUrl}}/books"
+        "url": "{{baseUrl}}/books",
+        "description": "Crea un libro. El ISBN debe ser único y tener 10 o 13 dígitos."
       }
     },
     {
@@ -38,12 +66,17 @@
             { "key": "skip", "value": "0" },
             { "key": "limit", "value": "20" }
           ]
-        }
+        },
+        "description": "Lista los libros con paginación (`skip` = offset, `limit` = tamaño de página, máx. 100)."
       }
     },
     {
       "name": "Books - Get by ID",
-      "request": { "method": "GET", "url": "{{baseUrl}}/books/{{bookId}}" }
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/books/{{bookId}}",
+        "description": "Obtiene un libro por su ID. Devuelve 404 si no existe."
+      }
     },
     {
       "name": "Books - Update",
@@ -54,12 +87,17 @@
           "mode": "raw",
           "raw": "{\n  \"stock_quantity\": 30,\n  \"cost_usd\": 16.50\n}"
         },
-        "url": "{{baseUrl}}/books/{{bookId}}"
+        "url": "{{baseUrl}}/books/{{bookId}}",
+        "description": "Actualiza un libro. Solo se modifican los campos enviados."
       }
     },
     {
-      "name": "Books - Delete",
-      "request": { "method": "DELETE", "url": "{{baseUrl}}/books/{{bookId}}" }
+      "name": "Books - Calculate price",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/books/{{bookId}}/calculate-price",
+        "description": "Calcula el precio de venta sugerido: convierte `cost_usd` a la moneda del país del proveedor usando la tasa de cambio actual y aplica un margen del 40%. Actualiza `selling_price_local` y devuelve el desglose.\n\nSi la API de tasas falla, se usa la tasa por defecto y `used_fallback_rate` viene en `true`."
+      }
     },
     {
       "name": "Books - Search by category",
@@ -70,7 +108,8 @@
           "host": ["{{baseUrl}}"],
           "path": ["books", "search"],
           "query": [{ "key": "category", "value": "Literatura Clásica" }]
-        }
+        },
+        "description": "Busca libros por categoría exacta."
       }
     },
     {
@@ -82,14 +121,37 @@
           "host": ["{{baseUrl}}"],
           "path": ["books", "low-stock"],
           "query": [{ "key": "threshold", "value": "10" }]
-        }
+        },
+        "description": "Lista los libros cuyo stock sea menor o igual al umbral indicado."
       }
     },
     {
-      "name": "Books - Calculate price",
+      "name": "Books - Delete",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/books/{{bookId}}",
+        "description": "Elimina un libro. Devuelve 204 sin cuerpo."
+      }
+    },
+    {
+      "name": "Errores - ISBN inválido (422)",
       "request": {
         "method": "POST",
-        "url": "{{baseUrl}}/books/{{bookId}}/calculate-price"
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Libro inválido\",\n  \"author\": \"Autor\",\n  \"isbn\": \"123\",\n  \"cost_usd\": -1,\n  \"stock_quantity\": -5,\n  \"category\": \"Prueba\",\n  \"supplier_country\": \"ES\"\n}"
+        },
+        "url": "{{baseUrl}}/books",
+        "description": "Demuestra las validaciones de negocio: ISBN con formato inválido, `cost_usd` no positivo y `stock_quantity` negativo. Devuelve 422 detallando cada campo."
+      }
+    },
+    {
+      "name": "Errores - Libro no encontrado (404)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/books/99999",
+        "description": "Devuelve 404 al pedir un libro inexistente."
       }
     }
   ]

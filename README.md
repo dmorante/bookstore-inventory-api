@@ -6,6 +6,18 @@ Construida con **FastAPI + SQLModel (async) + PostgreSQL**, empaquetada con **Do
 
 > Nota: la prueba pide preferentemente Django. Se acordó con el equipo evaluador realizarla en FastAPI.
 
+## API desplegada
+
+| | |
+|---|---|
+| **URL base** | <https://bookstore-inventory-api-ldhf.onrender.com> |
+| **Swagger UI** | <https://bookstore-inventory-api-ldhf.onrender.com/docs> |
+| **ReDoc** | <https://bookstore-inventory-api-ldhf.onrender.com/redoc> |
+
+Desplegada en **Render** (contenedor Docker) contra una base de datos **PostgreSQL gestionada en Supabase**. La colección de Postman incluida ya apunta a esta URL, así que puede probarse sin ejecutar nada en local.
+
+> El plan gratuito de Render suspende el servicio tras un rato sin tráfico: la primera petición puede tardar ~30 s mientras despierta, las siguientes son inmediatas.
+
 ---
 
 ## Requisitos previos
@@ -140,7 +152,11 @@ Respuesta:
 
 ## Colección de Postman
 
-Se incluye `postman_collection.json` en la raíz. Importa en Postman y ajusta la variable `baseUrl` (por defecto `http://localhost:8000`) para apuntar a la URL pública del despliegue.
+Se incluye [`postman_collection.json`](postman_collection.json) en la raíz. Impórtala en Postman: la variable `baseUrl` ya apunta a la **API desplegada**, por lo que las peticiones funcionan sin levantar nada en local. Para probar contra local, basta con cambiar `baseUrl` a `http://localhost:8000`.
+
+La petición _Books - Create_ guarda automáticamente el ID del libro creado en la variable `bookId`, de modo que las peticiones por ID (get, update, delete, calculate-price) apuntan a un libro válido si se ejecuta esa primero.
+
+La colección incluye además dos peticiones de ejemplo de manejo de errores (422 por validaciones y 404 por libro inexistente).
 
 ---
 
