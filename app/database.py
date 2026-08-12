@@ -17,16 +17,28 @@ Expone:
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import get_settings
 
 settings = get_settings()
 
+# Nota sobre pgbouncer / Supabase Transaction Pooler:
+# El transaction pooler (puerto 6543) reasigna conexiones a cada
+# transacción, por lo que los prepared statements que asyncpg cachea
+# terminan colisionando entre sesiones ("prepared statement already
+# exists"). Para funcionar detrás de pgbouncer transaction mode:
+#   1. statement_cache_size=0 → asyncpg no cachea prepared statements.
+#   2. NullPool → SQLAlchemy no mantiene conexiones abiertas; pgbouncer
+#      ya se encarga del pooling del lado del servidor.
+# Con conexiones directas (sin pooler) estas opciones tampoco hacen
+# daño, solo eliminan una capa de cache local.
 engine = create_async_engine(
     settings.database_url,
     echo=settings.debug,
-    pool_pre_ping=True,
+    poolclass=NullPool,
+    connect_args={"statement_cache_size": 0},
 )
 
 AsyncSessionLocal = async_sessionmaker(
