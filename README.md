@@ -11,8 +11,9 @@ Construida con **FastAPI + SQLModel (async) + PostgreSQL**, empaquetada con **Do
 | | |
 |---|---|
 | **URL base** | <https://bookstore-inventory-api-ldhf.onrender.com> |
-| **Swagger UI** | <https://bookstore-inventory-api-ldhf.onrender.com/docs> |
-| **ReDoc** | <https://bookstore-inventory-api-ldhf.onrender.com/redoc> |
+| **Documentación interactiva (Swagger UI)** | <https://bookstore-inventory-api-ldhf.onrender.com/docs> |
+
+**Swagger UI es el punto de entrada recomendado**: permite ejecutar cualquier endpoint desde el navegador, sin instalar nada. También hay una vista de solo lectura en `/redoc`.
 
 Desplegada en **Render** (contenedor Docker) contra una base de datos **PostgreSQL gestionada en Supabase**. La colección de Postman incluida ya apunta a esta URL, así que puede probarse sin ejecutar nada en local.
 
