@@ -51,11 +51,18 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_migrations_online() -> None:
-    """Aplica migraciones abriendo una conexión async real."""
+    """Aplica migraciones abriendo una conexión async real.
+
+    `connect_args={"statement_cache_size": 0}` es necesario para
+    funcionar detrás del transaction pooler de Supabase (pgbouncer),
+    que no soporta prepared statements. Sin esto, Alembic falla al
+    introspectar la BD con DuplicatePreparedStatementError.
+    """
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args={"statement_cache_size": 0},
     )
 
     async with connectable.connect() as connection:
