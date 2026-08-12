@@ -11,9 +11,10 @@ Construida con **FastAPI + SQLModel (async) + PostgreSQL**, empaquetada con **Do
 | | |
 |---|---|
 | **URL base** | <https://bookstore-inventory-api-ldhf.onrender.com> |
-| **Documentación interactiva (Swagger UI)** | <https://bookstore-inventory-api-ldhf.onrender.com/docs> |
+| **Swagger UI** | <https://bookstore-inventory-api-ldhf.onrender.com/docs> |
+| **ReDoc** | <https://bookstore-inventory-api-ldhf.onrender.com/redoc> |
 
-**Swagger UI es el punto de entrada recomendado**: permite ejecutar cualquier endpoint desde el navegador, sin instalar nada. También hay una vista de solo lectura en `/redoc`.
+**Swagger UI es el punto de entrada recomendado**: permite ejecutar cualquier endpoint desde el navegador, sin instalar nada. ReDoc ofrece la misma documentación en un formato de lectura más cómodo.
 
 Desplegada en **Render** (contenedor Docker) contra una base de datos **PostgreSQL gestionada en Supabase**. La colección de Postman incluida ya apunta a esta URL, así que puede probarse sin ejecutar nada en local.
 
@@ -78,9 +79,8 @@ Ver [.env.example](.env.example). Las principales:
 | `DATABASE_URL` | URL SQLAlchemy async a Postgres | `postgresql+asyncpg://postgres:postgres@db:5432/bookstore` |
 | `EXCHANGE_API_URL` | Endpoint público de tasas | `https://api.exchangerate-api.com/v4/latest/USD` |
 | `EXCHANGE_API_TIMEOUT` | Timeout HTTP en segundos | `5` |
+| `EXCHANGE_CACHE_TTL_SECONDS` | Vigencia de las tasas cacheadas | `3600` |
 | `DEFAULT_MARGIN_PERCENTAGE` | Margen de ganancia aplicado | `40` |
-| `DEFAULT_FALLBACK_RATE` | Tasa a usar si la API externa falla | `0.92` |
-| `DEFAULT_FALLBACK_CURRENCY` | Moneda del fallback | `EUR` |
 
 ---
 
@@ -134,6 +134,7 @@ Respuesta:
   "selling_price_local": 20.60,
   "currency": "EUR",
   "calculation_timestamp": "2026-08-11T10:30:00Z",
+  "rate_source": "live",
   "used_fallback_rate": false
 }
 ```
@@ -146,8 +147,22 @@ Respuesta:
 - `stock_quantity` >= 0.
 - `isbn` válido de **10 o 13 dígitos** (guiones permitidos) y **único**.
 - `supplier_country` en formato ISO 3166-1 alpha-2 (p. ej. `ES`, `MX`, `US`).
-- Al calcular precio, si la API externa falla se usa la tasa por defecto (`DEFAULT_FALLBACK_RATE`) siempre que la moneda destino coincida con `DEFAULT_FALLBACK_CURRENCY`; en caso contrario se responde **503**.
+- Al calcular precio, si la API externa falla se usa una tasa por defecto (ver más abajo).
 - Errores mapeados: **400** (validación / ISBN duplicado / moneda no soportada), **404** (libro inexistente), **422** (schema), **503** (API externa caída).
+
+### Qué pasa si la API de tasas falla
+
+El enunciado pide que el cálculo siga funcionando con una tasa por defecto. En lugar de recurrir a una única constante, la tasa se resuelve en cascada, de la fuente más precisa a la menos, y la respuesta indica siempre cuál se usó en el campo `rate_source`:
+
+| `rate_source` | Origen | `used_fallback_rate` |
+|---|---|---|
+| `live` | Consultada a la API externa (o servida de una caché aún vigente) | `false` |
+| `cache` | La API falló; se reutiliza la última tasa **real** conocida | `true` |
+| `default` | La API falló y no hay caché; se usa la tabla de respaldo del código, por lo que la tasa es **aproximada** | `true` |
+
+Las respuestas de la API se cachean durante `EXCHANGE_CACHE_TTL_SECONDS`, lo que evita salir a la red en cada cálculo y, sobre todo, deja una tasa real disponible como respaldo si el proveedor deja de responder. La tabla estática de [`app/core/exchange_rates.py`](app/core/exchange_rates.py) solo entra en juego en el peor escenario: API caída y ningún dato cacheado todavía.
+
+Solo se responde **503** si la moneda no se puede resolver por ninguna de las tres vías.
 
 ---
 

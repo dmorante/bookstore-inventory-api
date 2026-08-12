@@ -21,6 +21,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import Settings
 from app.core.country_currency import currency_for_country
+from app.core.exchange_rates import RateSource
 from app.core.exceptions import (
     BookNotFoundError,
     DuplicateISBNError,
@@ -143,7 +144,7 @@ class BookService:
         currency = currency_for_country(book.supplier_country)
 
         try:
-            rate, used_fallback = await self._exchange.get_rate(currency)
+            rate, rate_source = await self._exchange.get_rate(currency)
         except RuntimeError as exc:
             raise ExchangeRateUnavailableError(
                 f"No se pudo obtener la tasa USD → {currency}."
@@ -168,5 +169,8 @@ class BookService:
             selling_price_local=selling_price_local,
             currency=currency,
             calculation_timestamp=datetime.now(timezone.utc),
-            used_fallback_rate=used_fallback,
+            rate_source=rate_source,
+            # La tasa no es una cotización del momento salvo que venga en
+            # vivo de la API.
+            used_fallback_rate=rate_source is not RateSource.LIVE,
         )

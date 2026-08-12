@@ -37,10 +37,13 @@ class Settings(BaseSettings):
     )
     exchange_api_timeout: float = Field(default=5.0)
 
+    # Tiempo que se reutiliza una respuesta de la API antes de volver a
+    # consultarla. Las tasas de cambio no varían de un segundo a otro, así
+    # que cachearlas una hora evita salir a la red en cada cálculo.
+    exchange_cache_ttl_seconds: float = Field(default=3600.0)
+
     # Reglas de negocio.
     default_margin_percentage: float = Field(default=40.0)
-    default_fallback_rate: float = Field(default=0.92)
-    default_fallback_currency: str = Field(default="EUR")
 
     model_config = SettingsConfigDict(
         env_file=".env",

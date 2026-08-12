@@ -19,6 +19,7 @@ from typing import Optional
 from pydantic import BaseModel, Field as PydanticField
 from sqlmodel import Field, SQLModel
 
+from app.core.exchange_rates import RateSource
 from app.models.book import BookBase, validate_country, validate_isbn
 from pydantic import field_validator
 
@@ -92,7 +93,23 @@ class PriceCalculation(BaseModel):
     selling_price_local: float = PydanticField(description="Precio de venta sugerido en moneda local.", examples=[19.03])
     currency: str = PydanticField(description="Código ISO 4217 de la moneda local.", examples=["EUR"])
     calculation_timestamp: datetime = PydanticField(description="Momento (UTC) en que se realizó el cálculo.")
+    rate_source: RateSource = PydanticField(
+        default=RateSource.LIVE,
+        description=(
+            "Origen de la tasa aplicada:\n\n"
+            "- `live`: consultada a la API externa.\n"
+            "- `cache`: la API falló y se reutilizó la última tasa real conocida.\n"
+            "- `default`: la API falló y no había caché; se usó la tabla de "
+            "respaldo del código, por lo que la tasa es aproximada."
+        ),
+        examples=["live"],
+    )
     used_fallback_rate: bool = PydanticField(
         default=False,
-        description="Indica si se usó la tasa por defecto porque la API externa falló.",
+        description=(
+            "`true` cuando la tasa no pudo consultarse en vivo, es decir "
+            "siempre que `rate_source` no sea `live`. Se mantiene como "
+            "indicador simple para quien solo necesita saber si el precio se "
+            "calculó con una cotización vigente."
+        ),
     )
