@@ -72,7 +72,7 @@ class BookBase(SQLModel):
     cost_usd: float = Field(gt=0, description="Costo del libro en USD. Debe ser mayor a 0.")
     stock_quantity: int = Field(default=0, ge=0, description="Unidades en stock. No puede ser negativo.")
     category: str = Field(min_length=1, max_length=100, description="Categoría del libro.")
-    supplier_country: str = Field(min_length=2, max_length=2, description="País del proveedor en formato ISO alpha-2.")
+    supplier_country: str = Field(default="US", min_length=2, max_length=2, description="País del proveedor en formato ISO alpha-2 (Por Defecto USD).")
 
     @field_validator("isbn")
     @classmethod
