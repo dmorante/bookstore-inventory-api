@@ -38,7 +38,11 @@ engine = create_async_engine(
     settings.database_url,
     echo=settings.debug,
     poolclass=NullPool,
+    # asyncpg: no cachear prepared statements a nivel de driver.
     connect_args={"statement_cache_size": 0},
+    # SQLAlchemy dialecto asyncpg: tambien tiene su propia capa de
+    # prepared statements que debe apagarse para pgbouncer.
+    prepared_statement_cache_size=0,
 )
 
 AsyncSessionLocal = async_sessionmaker(
